@@ -349,3 +349,9 @@ Contributions welcome! See the [Contributing Guide](CONTRIBUTING.md).
 ## Troubleshooting
 
 See the [Troubleshooting Guide](TROUBLESHOOTING.md) for common issues and workarounds.
+
+## Advanced reporting
+
+Phase 1 adds read-only metadata, compatibility, pivot, batch and period-comparison
+tools. See [Advanced reporting](docs/advanced-reporting.md) for schemas, examples,
+validation rules and structured output details.

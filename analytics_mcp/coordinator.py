@@ -48,6 +48,11 @@ from analytics_mcp.tools.client import (
     set_require_request_credentials,
     use_request_access_token,
 )
+from analytics_mcp.tools.reporting.advanced import (
+    TOOLS,
+    OUTPUT_MODELS,
+    enrich_schema,
+)
 from analytics_mcp.tools.reporting.core import (
     run_report,
     _run_report_description,
@@ -96,6 +101,8 @@ read_only_tools = [
     run_funnel_report_with_description,
     run_conversions_report_with_description,
 ]
+
+read_only_tools.extend(FunctionTool(tool) for tool in TOOLS)
 
 # Instantiate the write ADK tools (only enabled when --allow-write is set)
 write_tools = [
@@ -161,6 +168,9 @@ def _prepare_mcp_tools(
         for prop in mcp_tool.input_schema.get("properties", {}).values():
             if "anyOf" in prop and prop.get("type") == "null":
                 del prop["type"]
+
+        if mcp_tool.name in OUTPUT_MODELS:
+            enrich_schema(mcp_tool)
 
         # Ensure additionalProperties is compatible with all MCP clients
         sanitize_mcp_schema_properties(mcp_tool.input_schema)
@@ -316,15 +326,25 @@ def create_server(
                 return mcp_types.CallToolResult(
                     content=[
                         mcp_types.TextContent(type="text", text=response_text)
-                    ]
+                    ],
+                    structured_content=(
+                        adk_tool_response if name in OUTPUT_MODELS else None
+                    ),
                 )
 
             except Exception as e:
                 print(
-                    f"MCP Server: Error executing ADK tool '{name}': {e}",
+                    f"MCP Server: Error executing ADK tool '{name}': "
+                    f"{type(e).__name__}",
                     file=sys.stderr,
                 )
-                error_msg = f"Failed to execute tool '{name}': {str(e)}"
+                detail = (
+                    str(e)
+                    if name in OUTPUT_MODELS
+                    and isinstance(e, (ValueError, RuntimeError))
+                    else "Request failed; check arguments, access and API quota."
+                )
+                error_msg = f"Failed to execute tool '{name}': {detail}"
                 if name in _WRITE_TOOL_NAMES and isinstance(
                     e, google_exceptions.Forbidden
                 ):
